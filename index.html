@@ -142,7 +142,13 @@
       border-radius: 6px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
       opacity: 0;
-      animation: fadeIn 0.5s ease forwards;
+      transform: scale(0.98);
+    }
+
+    .image-single img.is-loaded {
+      opacity: 1;
+      transform: scale(1);
+      transition: opacity 0.35s ease, transform 0.35s ease;
     }
 
     @keyframes fadeIn {
@@ -183,7 +189,13 @@
       border-radius: 6px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
       opacity: 0;
-      animation: fadeIn 0.6s ease forwards;
+      transform: scale(0.98);
+    }
+
+    .reveal-cell img.is-loaded {
+      opacity: 1;
+      transform: scale(1);
+      transition: opacity 0.4s ease, transform 0.4s ease;
     }
 
     .reveal-label {
@@ -470,6 +482,32 @@
     const nextBtn = document.getElementById("next-btn");
     const restartBtn = document.getElementById("restart-btn");
 
+    // ============ IMAGE LOADING ============
+    // Hides the <img> the instant we start loading a new src, and only
+    // fades it in once that image has actually finished loading — this
+    // stops the previous round's picture from lingering on screen.
+    function setImageSrc(imgEl, src) {
+      imgEl.classList.remove("is-loaded");
+      const onLoad = () => {
+        imgEl.classList.add("is-loaded");
+        imgEl.removeEventListener("load", onLoad);
+      };
+      imgEl.addEventListener("load", onLoad);
+      imgEl.src = src;
+      if (imgEl.complete && imgEl.naturalWidth > 0) {
+        onLoad();
+      }
+    }
+
+    function preloadAllImages() {
+      PAINTINGS.forEach((painting) => {
+        [painting.distorted, painting.original].forEach((src) => {
+          const img = new Image();
+          img.src = src;
+        });
+      });
+    }
+
     // ============ RENDER ============
     function startRound(index) {
       currentIndex = index;
@@ -481,11 +519,8 @@
       progressIndicator.textContent = `${currentIndex + 1} / ${PAINTINGS.length}`;
       hintText.classList.remove("hidden");
 
-      distortedImg.src = painting.distorted;
       distortedImg.alt = "Distorted painting";
-      distortedImg.style.animation = "none";
-      void distortedImg.offsetWidth;
-      distortedImg.style.animation = "";
+      setImageSrc(distortedImg, painting.distorted);
 
       countdownView.classList.remove("hidden");
       revealView.classList.add("hidden");
@@ -533,13 +568,8 @@
       countdownView.classList.add("hidden");
       revealView.classList.remove("hidden");
 
-      revealDistortedImg.src = painting.distorted;
-      revealOriginalImg.src = painting.original;
-      revealDistortedImg.style.animation = "none";
-      revealOriginalImg.style.animation = "none";
-      void revealOriginalImg.offsetWidth;
-      revealDistortedImg.style.animation = "";
-      revealOriginalImg.style.animation = "";
+      setImageSrc(revealDistortedImg, painting.distorted);
+      setImageSrc(revealOriginalImg, painting.original);
 
       paintingTitle.textContent = painting.title;
       paintingArtist.textContent = painting.artist;
@@ -596,6 +626,7 @@
     restartBtn.addEventListener("click", restart);
 
     // ============ INIT ============
+    preloadAllImages();
     startRound(0);
   </script>
 </body>
