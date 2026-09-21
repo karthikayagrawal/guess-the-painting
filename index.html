@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guess the Painting</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0c;
+      --panel: #141417;
+      --border: #26262b;
+      --text: #f2f2f0;
+      --muted: #8a8a92;
+      --accent: #e8c565;
+      --accent-dim: #6b5e33;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+    }
+
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---------- top bar ---------- */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 28px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .progress {
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    .hint kbd {
+      display: inline-block;
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      margin: 0 2px;
+    }
+
+    /* ---------- timer bar ---------- */
+    .timer-wrap {
+      flex-shrink: 0;
+      padding: 0 28px;
+      z-index: 10;
+    }
+
+    .timer-track {
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .timer-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transform-origin: left;
+      transition: width 0.1s linear, background-color 0.3s ease;
+    }
+
+    .timer-fill.urgent {
+      background: #e0654f;
+    }
+
+    .timer-number {
+      text-align: center;
+      font-size: 15px;
+      color: var(--muted);
+      margin-top: 10px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.05em;
+    }
+
+    /* ---------- stage ---------- */
+    .stage {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 40px 40px;
+      min-height: 0;
+    }
+
+    .image-single {
+      position: relative;
+      max-width: 100%;
+      max-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .image-single img {
+      max-width: 100%;
+      max-height: calc(100vh - 240px);
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      animation: fadeIn 0.5s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.98);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .reveal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      width: 100%;
+      max-width: 1200px;
+      align-items: center;
+      justify-items: center;
+    }
+
+    .reveal-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .reveal-cell img {
+      max-width: 100%;
+      max-height: 52vh;
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      animation: fadeIn 0.6s ease forwards;
+    }
+
+    .reveal-label {
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .painting-info {
+      text-align: center;
+      margin-top: 20px;
+      opacity: 0;
+      animation: fadeIn 0.6s ease 0.15s forwards;
+    }
+
+    .painting-title {
+      font-size: 26px;
+      font-weight: 600;
+      margin: 0 0 6px;
+    }
+
+    .painting-meta {
+      font-size: 15px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .painting-meta .artist {
+      color: var(--accent);
+    }
+
+    /* ---------- bottom controls ---------- */
+    .controls {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 22px 28px 30px;
+      z-index: 10;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      padding: 12px 26px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.1s ease;
+    }
+
+    button:hover {
+      border-color: var(--accent-dim);
+      background: #1b1b1f;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #14120a;
+      border-color: var(--accent);
+    }
+
+    button.primary:hover {
+      background: #f0d27e;
+    }
+
+    /* ---------- end screen ---------- */
+    .end-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 18px;
+      padding: 40px;
+    }
+
+    .end-screen h1 {
+      font-size: 40px;
+      margin: 0;
+    }
+
+    .end-screen p {
+      color: var(--muted);
+      font-size: 16px;
+      margin: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ---------- mobile ---------- */
+    @media (max-width: 720px) {
+      .reveal-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .reveal-cell img {
+        max-height: 30vh;
+      }
+
+      .topbar {
+        padding: 16px 18px;
+      }
+
+      .stage {
+        padding: 10px 16px 20px;
+      }
+
+      .painting-title {
+        font-size: 21px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+
+    <!-- ROUND SCREEN (countdown + reveal share this) -->
+    <div id="round-screen">
+      <div class="topbar">
+        <div class="progress" id="progress-indicator">1 / 9</div>
+        <div class="hint" id="hint-text">Press <kbd>SPACE</kbd> to reveal early</div>
+      </div>
+
+      <div class="timer-wrap" id="timer-wrap">
+        <div class="timer-track">
+          <div class="timer-fill" id="timer-fill"></div>
+        </div>
+        <div class="timer-number" id="timer-number">15</div>
+      </div>
+
+      <div class="stage" id="stage">
+        <!-- countdown state -->
+        <div class="image-single" id="countdown-view">
+          <img id="distorted-img" src="" alt="Distorted painting" />
+        </div>
+
+        <!-- reveal state -->
+        <div class="reveal-grid hidden" id="reveal-view">
+          <div class="reveal-cell">
+            <div class="reveal-label">Distorted</div>
+            <img id="reveal-distorted-img" src="" alt="Distorted painting" />
+          </div>
+          <div class="reveal-cell">
+            <div class="reveal-label">Original</div>
+            <img id="reveal-original-img" src="" alt="Original painting" />
+          </div>
+        </div>
+      </div>
+
+      <div class="painting-info hidden" id="painting-info">
+        <h2 class="painting-title" id="painting-title"></h2>
+        <p class="painting-meta">
+          <span class="artist" id="painting-artist"></span> &middot; <span id="painting-year"></span>
+        </p>
+      </div>
+
+      <div class="controls">
+        <button id="reveal-btn">Reveal</button>
+        <button class="primary hidden" id="next-btn">Next &rarr;</button>
+      </div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div class="end-screen hidden" id="end-screen">
+      <h1>That's all 9!</h1>
+      <p>Thanks for playing &mdash; want to go again?</p>
+      <button class="primary" id="restart-btn">Restart</button>
+    </div>
+
+  </div>
+
+  <script>
+    // ============ CONFIG ============
+    const COUNTDOWN_SECONDS = 15; // adjust round length here
+
+    // ============ DATA ============
+    // Swap "distorted" / "original" paths with your own files in /images.
+    const PAINTINGS = [
+      {
+        title: "The Kiss",
+        artist: "Gustav Klimt",
+        year: "1908",
+        distorted: "images/painting-1-distorted.jpg",
+        original: "images/painting-1-original.jpg",
+      },
+      {
+        title: "The Creation of Adam",
+        artist: "Michelangelo",
+        year: "1512",
+        distorted: "images/painting-2-distorted.jpg",
+        original: "images/painting-2-original.jpg",
+      },
+      {
+        title: "Girl with a Pearl Earring",
+        artist: "Johannes Vermeer",
+        year: "1665",
+        distorted: "images/painting-3-distorted.jpg",
+        original: "images/painting-3-original.jpg",
+      },
+      {
+        title: "Saturn Devouring His Son",
+        artist: "Francisco Goya",
+        year: "1823",
+        distorted: "images/painting-4-distorted.jpg",
+        original: "images/painting-4-original.jpg",
+      },
+      {
+        title: "La Danse",
+        artist: "Henri Matisse",
+        year: "1910",
+        distorted: "images/painting-5-distorted.jpg",
+        original: "images/painting-5-original.jpg",
+      },
+      {
+        title: "The Potato Eaters",
+        artist: "Vincent Van Gogh",
+        year: "1885",
+        distorted: "images/painting-6-distorted.jpg",
+        original: "images/painting-6-original.jpg",
+      },
+      {
+        title: "Landscape with the Fall of Icarus",
+        artist: "Pieter Bruegel the Elder",
+        year: "1560",
+        distorted: "images/painting-7-distorted.jpg",
+        original: "images/painting-7-original.jpg",
+      },
+      {
+        title: "Guernica",
+        artist: "Pablo Picasso",
+        year: "1937",
+        distorted: "images/painting-8-distorted.jpg",
+        original: "images/painting-8-original.jpg",
+      },
+      {
+        title: "Untitled",
+        artist: "Mark Rothko",
+        year: "1952",
+        distorted: "images/painting-9-distorted.jpg",
+        original: "images/painting-9-original.jpg",
+      },
+    ];
+
+    // ============ STATE ============
+    let currentIndex = 0;
+    let phase = "countdown"; // "countdown" | "reveal" | "end"
+    let secondsLeft = COUNTDOWN_SECONDS;
+    let timerInterval = null;
+
+    // ============ DOM ============
+    const roundScreen = document.getElementById("round-screen");
+    const endScreen = document.getElementById("end-screen");
+    const progressIndicator = document.getElementById("progress-indicator");
+    const hintText = document.getElementById("hint-text");
+    const timerWrap = document.getElementById("timer-wrap");
+    const timerFill = document.getElementById("timer-fill");
+    const timerNumber = document.getElementById("timer-number");
+    const countdownView = document.getElementById("countdown-view");
+    const revealView = document.getElementById("reveal-view");
+    const distortedImg = document.getElementById("distorted-img");
+    const revealDistortedImg = document.getElementById("reveal-distorted-img");
+    const revealOriginalImg = document.getElementById("reveal-original-img");
+    const paintingInfo = document.getElementById("painting-info");
+    const paintingTitle = document.getElementById("painting-title");
+    const paintingArtist = document.getElementById("painting-artist");
+    const paintingYear = document.getElementById("painting-year");
+    const revealBtn = document.getElementById("reveal-btn");
+    const nextBtn = document.getElementById("next-btn");
+    const restartBtn = document.getElementById("restart-btn");
+
+    // ============ RENDER ============
+    function startRound(index) {
+      currentIndex = index;
+      phase = "countdown";
+      secondsLeft = COUNTDOWN_SECONDS;
+
+      const painting = PAINTINGS[currentIndex];
+
+      progressIndicator.textContent = `${currentIndex + 1} / ${PAINTINGS.length}`;
+      hintText.classList.remove("hidden");
+
+      distortedImg.src = painting.distorted;
+      distortedImg.alt = "Distorted painting";
+      distortedImg.style.animation = "none";
+      void distortedImg.offsetWidth;
+      distortedImg.style.animation = "";
+
+      countdownView.classList.remove("hidden");
+      revealView.classList.add("hidden");
+      paintingInfo.classList.add("hidden");
+
+      timerWrap.classList.remove("hidden");
+      timerFill.style.width = "100%";
+      timerFill.classList.remove("urgent");
+      timerNumber.textContent = secondsLeft;
+
+      revealBtn.classList.remove("hidden");
+      nextBtn.classList.add("hidden");
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(tick, 1000);
+    }
+
+    function tick() {
+      secondsLeft -= 1;
+      updateTimerDisplay();
+      if (secondsLeft <= 0) {
+        revealPainting();
+      }
+    }
+
+    function updateTimerDisplay() {
+      const pct = Math.max(0, (secondsLeft / COUNTDOWN_SECONDS) * 100);
+      timerFill.style.width = pct + "%";
+      timerNumber.textContent = Math.max(0, secondsLeft);
+      if (secondsLeft <= 5) {
+        timerFill.classList.add("urgent");
+      }
+    }
+
+    function revealPainting() {
+      if (phase !== "countdown") return;
+      phase = "reveal";
+      clearInterval(timerInterval);
+
+      const painting = PAINTINGS[currentIndex];
+
+      timerWrap.classList.add("hidden");
+      hintText.classList.add("hidden");
+
+      countdownView.classList.add("hidden");
+      revealView.classList.remove("hidden");
+
+      revealDistortedImg.src = painting.distorted;
+      revealOriginalImg.src = painting.original;
+      revealDistortedImg.style.animation = "none";
+      revealOriginalImg.style.animation = "none";
+      void revealOriginalImg.offsetWidth;
+      revealDistortedImg.style.animation = "";
+      revealOriginalImg.style.animation = "";
+
+      paintingTitle.textContent = painting.title;
+      paintingArtist.textContent = painting.artist;
+      paintingYear.textContent = painting.year;
+      paintingInfo.classList.remove("hidden");
+
+      revealBtn.classList.add("hidden");
+      nextBtn.classList.remove("hidden");
+    }
+
+    function advance() {
+      if (currentIndex + 1 >= PAINTINGS.length) {
+        showEndScreen();
+      } else {
+        startRound(currentIndex + 1);
+      }
+    }
+
+    function showEndScreen() {
+      phase = "end";
+      clearInterval(timerInterval);
+      roundScreen.classList.add("hidden");
+      endScreen.classList.remove("hidden");
+    }
+
+    function restart() {
+      endScreen.classList.add("hidden");
+      roundScreen.classList.remove("hidden");
+      startRound(0);
+    }
+
+    // ============ INPUT ============
+    function handlePrimaryAction() {
+      if (phase === "countdown") {
+        revealPainting();
+      } else if (phase === "reveal") {
+        advance();
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        if (phase === "end") {
+          restart();
+        } else {
+          handlePrimaryAction();
+        }
+      }
+    });
+
+    revealBtn.addEventListener("click", revealPainting);
+    nextBtn.addEventListener("click", advance);
+    restartBtn.addEventListener("click", restart);
+
+    // ============ INIT ============
+    startRound(0);
+  </script>
+</body>
+
+</html>
