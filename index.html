@@ -275,8 +275,8 @@
       background: #f0d27e;
     }
 
-    /* ---------- end screen ---------- */
-    .end-screen {
+    /* ---------- start / end screens ---------- */
+    .center-screen {
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -287,15 +287,27 @@
       padding: 40px;
     }
 
-    .end-screen h1 {
+    .center-screen h1 {
       font-size: 40px;
       margin: 0;
     }
 
-    .end-screen p {
+    .center-screen p {
       color: var(--muted);
       font-size: 16px;
       margin: 0;
+    }
+
+    .center-screen .description {
+      max-width: 440px;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    .center-screen button.primary {
+      margin-top: 8px;
+      padding: 14px 36px;
+      font-size: 15px;
     }
 
     .hidden {
@@ -331,8 +343,17 @@
 <body>
   <div id="app">
 
+    <!-- START SCREEN -->
+    <div class="center-screen" id="start-screen">
+      <h1>Guess the Painting</h1>
+      <p class="description">A mini game where you try and guess the (famous) painting in 15
+        seconds or less. The catch: the paintings are all messed up and strange looking. Put your
+        art knowledge to the test!</p>
+      <button class="primary" id="start-btn">Start</button>
+    </div>
+
     <!-- ROUND SCREEN (countdown + reveal share this) -->
-    <div id="round-screen">
+    <div id="round-screen" class="hidden">
       <div class="topbar">
         <div class="progress" id="progress-indicator">1 / 9</div>
         <div class="hint" id="hint-text">Press <kbd>SPACE</kbd> to reveal early</div>
@@ -378,7 +399,7 @@
     </div>
 
     <!-- END SCREEN -->
-    <div class="end-screen hidden" id="end-screen">
+    <div class="center-screen hidden" id="end-screen">
       <h1>That's all 9!</h1>
       <p>Thanks for playing &mdash; want to go again?</p>
       <button class="primary" id="restart-btn">Restart</button>
@@ -460,11 +481,13 @@
 
     // ============ STATE ============
     let currentIndex = 0;
-    let phase = "countdown"; // "countdown" | "reveal" | "end"
+    let phase = "start"; // "start" | "countdown" | "reveal" | "end"
     let secondsLeft = COUNTDOWN_SECONDS;
     let timerInterval = null;
 
     // ============ DOM ============
+    const startScreen = document.getElementById("start-screen");
+    const startBtn = document.getElementById("start-btn");
     const roundScreen = document.getElementById("round-screen");
     const endScreen = document.getElementById("end-screen");
     const progressIndicator = document.getElementById("progress-indicator");
@@ -604,6 +627,12 @@
       startRound(0);
     }
 
+    function beginGame() {
+      startScreen.classList.add("hidden");
+      roundScreen.classList.remove("hidden");
+      startRound(0);
+    }
+
     // ============ INPUT ============
     function handlePrimaryAction() {
       if (phase === "countdown") {
@@ -616,7 +645,9 @@
     document.addEventListener("keydown", (e) => {
       if (e.code === "Space" || e.key === " ") {
         e.preventDefault();
-        if (phase === "end") {
+        if (phase === "start") {
+          beginGame();
+        } else if (phase === "end") {
           restart();
         } else {
           handlePrimaryAction();
@@ -624,13 +655,13 @@
       }
     });
 
+    startBtn.addEventListener("click", beginGame);
     revealBtn.addEventListener("click", revealPainting);
     nextBtn.addEventListener("click", advance);
     restartBtn.addEventListener("click", restart);
 
     // ============ INIT ============
     preloadAllImages();
-    startRound(0);
   </script>
 </body>
 
